@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AYB Event Registration Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&family=Roboto+Mono:wght@500;700&display=swap"
+        rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div class="bg-glow bg-glow-a"></div>
+    <div class="bg-glow bg-glow-b"></div>
+    <div class="bg-glow bg-glow-c"></div>
+
+    <main class="dashboard container-fluid px-3 px-lg-4">
+        <header class="hero mb-4">
+            <div class="hero-content">
+                <p class="eyebrow">Blueprint Statistics</p>
+                <h1 class="mb-2">AYB Event Rego Dashboard</h1>
+                <p class="subtitle">Live browser snapshot of registrations, attendees, and upcoming event demand.</p>
+            </div>
+            <div class="hero-actions">
+                <a class="btn" href="manage.html">Manage Data</a>
+            </div>
+        </header>
+
+        <nav class="page-nav mb-3" aria-label="Pages">
+            <a class="active" href="index.html">Dashboard</a>
+            <a href="manage.html">Manage Data</a>
+        </nav>
+
+        <section class="card metrics" aria-label="Key metrics">
+            <article>
+                <p class="metric-label">Total Registrations</p>
+                <p class="metric-value" id="totalRegistrations">0</p>
+            </article>
+            <article>
+                <p class="metric-label">Total Attendees</p>
+                <p class="metric-value" id="totalAttendees">0</p>
+            </article>
+            <article>
+                <p class="metric-label">Upcoming Registrations</p>
+                <p class="metric-value" id="upcomingRegistrations">0</p>
+            </article>
+            <article>
+                <p class="metric-label">Attendee Rate</p>
+                <p class="metric-value" id="attendeeRate">0%</p>
+            </article>
+            <article>
+                <p class="metric-label">Tracked Events</p>
+                <p class="metric-value" id="trackedEvents">0</p>
+            </article>
+            <article>
+                <p class="metric-label">Next Event</p>
+                <p class="metric-value compact" id="nextEventMetric">-</p>
+            </article>
+        </section>
+
+        <section class="card overview-card" aria-label="Statistics overview">
+            <div class="table-head">
+                <h2>Statistics Overview</h2>
+                <p class="hint">Quick visual view of conversion and event mix.</p>
+            </div>
+            <div class="overview-grid">
+                <article class="overview-block">
+                    <p class="metric-label">Attendance Conversion</p>
+                    <p class="overview-value" id="conversionValue">0%</p>
+                    <div class="progress-track" aria-hidden="true">
+                        <div class="progress-fill" id="conversionBar"></div>
+                    </div>
+                    <p class="hint">Attendees vs total registrations</p>
+                </article>
+                <article class="overview-block">
+                    <p class="metric-label">Completed vs Upcoming Events</p>
+                    <p class="overview-value"><span id="completedEvents">0</span> / <span id="upcomingEvents">0</span>
+                    </p>
+                    <div class="split-track" aria-hidden="true">
+                        <div class="split-fill completed" id="completedBar"></div>
+                        <div class="split-fill upcoming" id="upcomingBar"></div>
+                    </div>
+                    <p class="hint"><span id="completedPercent">0%</span> completed, <span
+                            id="upcomingPercent">0%</span> upcoming</p>
+                </article>
+                <article class="overview-block">
+                    <p class="metric-label">Highest Registration Event</p>
+                    <p class="overview-value compact" id="topEventName">-</p>
+                    <p class="hint" id="topEventMeta">No event data available yet.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="grid-two chart-grid" aria-label="Visual analytics">
+            <section class="card">
+                <h2>Event Status Split (Pie)</h2>
+                <div id="statusPieWrap" class="chart-wrap"></div>
+            </section>
+            <section class="card">
+                <h2>Top Events by Registrations (Bar)</h2>
+                <div id="topEventsChart" class="bars chart-bars"></div>
+            </section>
+        </section>
+
+        <section class="card" aria-label="Monthly trend">
+            <h2>Monthly Registrations (Bar)</h2>
+            <div id="monthlyChart" class="bars chart-bars"></div>
+        </section>
+
+        <section class="toolbar-card" aria-label="Dashboard filters">
+            <label>
+                Search
+                <input class="form-control" id="searchInput" type="search" placeholder="Search event or group" />
+            </label>
+            <label>
+                Group
+                <select class="form-select" id="groupFilter">
+                    <option value="all">All groups</option>
+                </select>
+            </label>
+            <label>
+                Status
+                <select class="form-select" id="statusFilter">
+                    <option value="all">All statuses</option>
+                    <option value="completed">Completed</option>
+                    <option value="upcoming">Upcoming</option>
+                </select>
+            </label>
+            <label>
+                Sort by
+                <select class="form-select" id="sortFilter">
+                    <option value="date-asc">Date (Oldest first)</option>
+                    <option value="date-desc">Date (Newest first)</option>
+                    <option value="registrations-desc">Registrations (High to low)</option>
+                    <option value="attendees-desc">Attendees (High to low)</option>
+                    <option value="name-asc">Name (A-Z)</option>
+                </select>
+            </label>
+            <button id="clearFiltersBtn" class="btn ghost" type="button">Clear Filters</button>
+            <p class="filter-meta" id="filterMeta" aria-live="polite">Showing 0 events</p>
+        </section>
+
+        <section class="grid-two">
+            <section class="card">
+                <h2>Registrations by Event Group</h2>
+                <div id="groupBars" class="bars" aria-label="Registrations by group"></div>
+            </section>
+
+            <section class="card">
+                <h2>Upcoming Focus</h2>
+                <div id="upcomingList" class="event-stack" aria-label="Upcoming events"></div>
+            </section>
+        </section>
+
+        <section class="card" aria-label="Event table">
+            <div class="table-head">
+                <h2>Event Details</h2>
+                <p class="hint" id="tableHint">For updates, go to the Manage Data page.</p>
+            </div>
+            <div class="table-wrap">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Date</th>
+                            <th>Group</th>
+                            <th>Status</th>
+                            <th>Registrations</th>
+                            <th>Attendees</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script src="events-store.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
