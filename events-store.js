@@ -186,25 +186,34 @@
     return new Intl.NumberFormat("en-AU").format(number(value));
   }
 
-  function loadEvents() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) {
-      return structuredClone(seedData);
-    }
-
+  async function loadEvents() {
     try {
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) {
-        return structuredClone(seedData);
+      const response = await fetch('/api/events');
+      if (response.ok) {
+        const parsed = await response.json();
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
       }
-      return parsed;
-    } catch {
-      return structuredClone(seedData);
+    } catch (err) {
+      console.error('Failed to load from API, falling back to local seed data', err);
     }
+    return structuredClone(seedData);
   }
 
-  function saveEvents(events) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  async function saveEvents(events) {
+    try {
+      await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(events),
+      });
+      // Optionally fallback to local storage if API fails, but we want a single source of truth now
+    } catch (err) {
+      console.error('Failed to save to API', err);
+    }
   }
 
   function resetEvents() {
