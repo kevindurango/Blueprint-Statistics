@@ -188,7 +188,7 @@
 
   async function loadEvents() {
     try {
-      const response = await fetch('/api/events');
+      const response = await fetch("/api/events");
       if (response.ok) {
         const parsed = await response.json();
         if (Array.isArray(parsed)) {
@@ -196,23 +196,26 @@
         }
       }
     } catch (err) {
-      console.error('Failed to load from API, falling back to local seed data', err);
+      console.error(
+        "Failed to load from API, falling back to local seed data",
+        err,
+      );
     }
     return structuredClone(seedData);
   }
 
   async function saveEvents(events) {
     try {
-      await fetch('/api/events', {
-        method: 'POST',
+      await fetch("/api/events", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(events),
       });
       // Optionally fallback to local storage if API fails, but we want a single source of truth now
     } catch (err) {
-      console.error('Failed to save to API', err);
+      console.error("Failed to save to API", err);
     }
   }
 

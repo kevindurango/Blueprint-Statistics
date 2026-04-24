@@ -67,7 +67,9 @@ function sortEvents(events) {
       sorted.sort((a, b) => byDateAsc(b, a));
       break;
     case "registrations-desc":
-      sorted.sort((a, b) => b.registrations - a.registrations || byDateAsc(a, b));
+      sorted.sort(
+        (a, b) => b.registrations - a.registrations || byDateAsc(a, b),
+      );
       break;
     case "attendees-desc":
       sorted.sort((a, b) => b.attendees - a.attendees || byDateAsc(a, b));
@@ -192,7 +194,9 @@ function renderStatusPie(events) {
     return;
   }
 
-  const completed = events.filter((event) => event.status === "completed").length;
+  const completed = events.filter(
+    (event) => event.status === "completed",
+  ).length;
   const upcoming = events.filter((event) => event.status === "upcoming").length;
   const total = completed + upcoming || 1;
   const completedAngle = (completed / total) * 360;
@@ -291,10 +295,11 @@ function renderMonthlyChart(events) {
     const fill = document.createElement("div");
     const value = document.createElement("span");
     const [year, month] = entry.month.split("-");
-    const labelDate = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(
-      "en-AU",
-      { month: "short", year: "numeric" },
-    );
+    const labelDate = new Date(
+      Number(year),
+      Number(month) - 1,
+      1,
+    ).toLocaleDateString("en-AU", { month: "short", year: "numeric" });
 
     row.className = "bar-row";
     label.className = "bar-label";
@@ -445,13 +450,14 @@ window.addEventListener("storage", async (event) => {
 
 // Initial load
 (async function init() {
-  const loadingIndicator = document.createElement('div');
-  loadingIndicator.style.cssText = "position:fixed; top:20px; right:20px; padding:10px 20px; background:var(--bg-card); color:var(--text-primary); border-radius:8px; box-shadow:var(--shadow-md); z-index:9999; font-weight:600; font-size:14px; border:1px solid var(--border-color);";
+  const loadingIndicator = document.createElement("div");
+  loadingIndicator.style.cssText =
+    "position:fixed; top:20px; right:20px; padding:10px 20px; background:var(--bg-card); color:var(--text-primary); border-radius:8px; box-shadow:var(--shadow-md); z-index:9999; font-weight:600; font-size:14px; border:1px solid var(--border-color);";
   loadingIndicator.innerText = "Syncing from cloud...";
   document.body.appendChild(loadingIndicator);
 
   state.events = await window.AYBStore.loadEvents();
-  
+
   loadingIndicator.remove();
   rerender();
 })();

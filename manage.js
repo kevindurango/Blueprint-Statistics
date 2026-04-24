@@ -309,13 +309,14 @@ resetDataBtn.addEventListener("click", () => {
 
 // Initial load
 (async function init() {
-  const loadingIndicator = document.createElement('div');
-  loadingIndicator.style.cssText = "position:fixed; top:20px; right:20px; padding:10px 20px; background:var(--bg-card); color:var(--text-primary); border-radius:8px; box-shadow:var(--shadow-md); z-index:9999; font-weight:600; font-size:14px; border:1px solid var(--border-color);";
+  const loadingIndicator = document.createElement("div");
+  loadingIndicator.style.cssText =
+    "position:fixed; top:20px; right:20px; padding:10px 20px; background:var(--bg-card); color:var(--text-primary); border-radius:8px; box-shadow:var(--shadow-md); z-index:9999; font-weight:600; font-size:14px; border:1px solid var(--border-color);";
   loadingIndicator.innerText = "Syncing from cloud...";
   document.body.appendChild(loadingIndicator);
 
   state.events = await window.AYBStore.loadEvents();
-  
+
   loadingIndicator.remove();
   renderTable();
 })();
