@@ -151,6 +151,8 @@ function renderTable() {
     });
 }
 
+const saveChangesBtn = document.getElementById("saveChangesBtn");
+
 function saveAndRender(message = "Saved to cloud.") {
   window.AYBStore.saveEvents(state.events);
   renderTable();
@@ -170,9 +172,9 @@ function updateEventField(eventId, field, rawValue) {
     event[field] = String(rawValue || "").trim();
   }
 
-  window.AYBStore.saveEvents(state.events);
   updateSummary();
-  showMessage("Saved to cloud.");
+  saveChangesBtn.classList.add("pulse"); // Optional subtle visual cue
+  saveChangesBtn.innerText = "Unsaved Changes: Save to Cloud";
 }
 
 function normalizeEvent(event) {
@@ -186,6 +188,12 @@ function normalizeEvent(event) {
     attendees: Math.max(0, window.AYBStore.number(event.attendees)),
   };
 }
+
+saveChangesBtn.addEventListener("click", () => {
+  saveAndRender("Successfully saved all changes to the cloud.");
+  saveChangesBtn.classList.remove("pulse");
+  saveChangesBtn.innerText = "Save Changes to Cloud";
+});
 
 eventsTableBody.addEventListener("input", (e) => {
   const target = e.target;
@@ -213,7 +221,8 @@ eventsTableBody.addEventListener("change", (e) => {
   }
 
   updateEventField(row.dataset.id, target.dataset.field, target.value);
-  renderTable();
+  // Do NOT renderTable here or it breaks input focus if it was somehow involved, but usually ok since it's a select.
+  // Actually, we shouldn't renderTable immediately if user is making bulk edits. Let them click Save.
 });
 
 eventsTableBody.addEventListener("click", (e) => {

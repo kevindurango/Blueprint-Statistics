@@ -114,9 +114,12 @@
         </section>
 
         <section class="card" aria-label="Event table">
-            <div class="table-head">
-                <h2>Edit Event Details</h2>
-                <p class="hint">Change values directly in the table. Updates save instantly.</p>
+            <div class="table-head d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="mb-1">Edit Event Details</h2>
+                    <p class="hint mb-0">Change values locally, then click save when you are ready.</p>
+                </div>
+                <button id="saveChangesBtn" class="btn" type="button">Save Changes to Cloud</button>
             </div>
             <div class="table-wrap">
                 <table class="table table-hover align-middle mb-0">

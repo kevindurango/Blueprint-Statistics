@@ -1006,3 +1006,19 @@ tbody tr:hover {
     padding: 0.7rem 0.6rem;
   }
 }
+.btn.pulse {
+  background: var(--indigo-600);
+  color: white;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
