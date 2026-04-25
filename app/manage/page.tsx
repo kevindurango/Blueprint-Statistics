@@ -16,10 +16,41 @@ import {
 export default function ManagePage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [search, setSearch] = useState("");
-  const [message, setMessage] = useState("Data is not shared across browsers or devices.");
+  const [message, setMessage] = useState("Data is synced to the cloud.");
 
   useEffect(() => {
-    setEvents(loadEvents());
+    let mounted = true;
+
+    const refresh = async () => {
+      try {
+        const nextEvents = await loadEvents();
+        if (mounted) {
+          setEvents(nextEvents);
+        }
+      } catch (error) {
+        if (mounted) {
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load cloud data.",
+          );
+        }
+      }
+    };
+
+    void refresh();
+    const refreshInterval = window.setInterval(refresh, 10000);
+
+    const onUpdate = () => {
+      void refresh();
+    };
+
+    window.addEventListener("blueprint-events-updated", onUpdate);
+    return () => {
+      mounted = false;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("blueprint-events-updated", onUpdate);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -27,16 +58,25 @@ export default function ManagePage() {
     if (!query) return events;
     return events.filter(
       (event) =>
-        event.name.toLowerCase().includes(query) || event.group.toLowerCase().includes(query),
+        event.name.toLowerCase().includes(query) ||
+        event.group.toLowerCase().includes(query),
     );
   }, [events, search]);
 
   const totals = useMemo(() => calcTotals(events), [events]);
 
-  const persist = (nextEvents: EventItem[], nextMessage: string) => {
+  const persist = async (nextEvents: EventItem[], nextMessage: string) => {
+    const previousEvents = events;
     setEvents(nextEvents);
-    saveEvents(nextEvents);
-    setMessage(nextMessage);
+    try {
+      await saveEvents(nextEvents);
+      setMessage(nextMessage);
+    } catch (error) {
+      setEvents(previousEvents);
+      setMessage(
+        error instanceof Error ? error.message : "Could not save cloud data.",
+      );
+    }
   };
 
   const updateField = (id: string, field: keyof EventItem, value: string) => {
@@ -47,7 +87,7 @@ export default function ManagePage() {
       }
       return { ...event, [field]: value };
     });
-    persist(nextEvents, "Saved in this browser.");
+    void persist(nextEvents, "Saved to cloud.");
   };
 
   const onAddEvent = (event: FormEvent<HTMLFormElement>) => {
@@ -65,7 +105,7 @@ export default function ManagePage() {
       setMessage("Event name and date are required.");
       return;
     }
-    persist([...events, next], "Event added.");
+    void persist([...events, next], "Event added.");
     event.currentTarget.reset();
   };
 
@@ -79,9 +119,16 @@ export default function ManagePage() {
         if (!Array.isArray(parsed)) {
           throw new Error("Imported file must contain an array of events.");
         }
-        persist(parsed.map((item) => normalizeEvent(item)), "Imported JSON and replaced browser data.");
+        void persist(
+          parsed.map((item) => normalizeEvent(item)),
+          "Imported JSON and replaced cloud data.",
+        );
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Could not import this JSON file.");
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not import this JSON file.",
+        );
       } finally {
         e.target.value = "";
       }
@@ -99,7 +146,7 @@ export default function ManagePage() {
     link.download = "blueprint-statistics-events.json";
     link.click();
     URL.revokeObjectURL(url);
-    setMessage("Exported the current browser data as JSON.");
+    setMessage("Exported the current cloud data as JSON.");
   };
 
   return (
@@ -109,7 +156,8 @@ export default function ManagePage() {
           <p className="eyebrow">Blueprint Statistics</p>
           <h1 className="mb-2">Manage Event Data</h1>
           <p className="subtitle">
-            Add, edit, import, and export event records. Changes are saved in this browser only.
+            Add, edit, import, and export event records. Changes are saved to
+            the cloud.
           </p>
         </div>
         <div className="hero-actions">
@@ -119,7 +167,13 @@ export default function ManagePage() {
           <button
             className="btn ghost"
             type="button"
-            onClick={() => persist(resetEvents(), "Restored the original sample data.")}
+            onClick={() => {
+              void (async () => {
+                const fresh = await resetEvents();
+                setEvents(fresh);
+                setMessage("Restored the original sample data.");
+              })();
+            }}
           >
             Reset to Original Data
           </button>
@@ -133,7 +187,10 @@ export default function ManagePage() {
         </Link>
       </nav>
 
-      <section className="card metrics manage-metrics" aria-label="Current data summary">
+      <section
+        className="card metrics manage-metrics"
+        aria-label="Current data summary"
+      >
         <article>
           <p className="metric-label">Total Registrations</p>
           <p className="metric-value">{formatInt(totals.registrations)}</p>
@@ -148,7 +205,7 @@ export default function ManagePage() {
         </article>
         <article>
           <p className="metric-label">Storage</p>
-          <p className="metric-value compact">Local</p>
+          <p className="metric-value compact">Cloud</p>
         </article>
       </section>
 
@@ -169,7 +226,11 @@ export default function ManagePage() {
           </button>
           <label className="file-btn">
             Import JSON
-            <input type="file" accept="application/json,.json" onChange={onImport} />
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={onImport}
+            />
           </label>
         </div>
         <p className="hint data-message" aria-live="polite">
@@ -182,7 +243,13 @@ export default function ManagePage() {
         <form className="form-grid" onSubmit={onAddEvent}>
           <label>
             Event Name
-            <input className="form-control" required name="name" type="text" placeholder="e.g., Sydney (June)" />
+            <input
+              className="form-control"
+              required
+              name="name"
+              type="text"
+              placeholder="e.g., Sydney (June)"
+            />
           </label>
           <label>
             Date
@@ -190,7 +257,12 @@ export default function ManagePage() {
           </label>
           <label>
             Group
-            <select className="form-select" required name="group" defaultValue={GROUPS[0]}>
+            <select
+              className="form-select"
+              required
+              name="group"
+              defaultValue={GROUPS[0]}
+            >
               {GROUPS.map((group) => (
                 <option key={group} value={group}>
                   {group}
@@ -200,18 +272,36 @@ export default function ManagePage() {
           </label>
           <label>
             Status
-            <select className="form-select" required name="status" defaultValue="completed">
+            <select
+              className="form-select"
+              required
+              name="status"
+              defaultValue="completed"
+            >
               <option value="completed">Completed</option>
               <option value="upcoming">Upcoming</option>
             </select>
           </label>
           <label>
             Registrations
-            <input className="form-control" required min="0" name="registrations" type="number" placeholder="0" />
+            <input
+              className="form-control"
+              required
+              min="0"
+              name="registrations"
+              type="number"
+              placeholder="0"
+            />
           </label>
           <label>
             Attendees
-            <input className="form-control" min="0" name="attendees" type="number" placeholder="0" />
+            <input
+              className="form-control"
+              min="0"
+              name="attendees"
+              type="number"
+              placeholder="0"
+            />
           </label>
           <button className="btn" type="submit">
             Add Event
@@ -222,7 +312,9 @@ export default function ManagePage() {
       <section className="card" aria-label="Event table">
         <div className="table-head">
           <h2>Edit Event Details</h2>
-          <p className="hint">Change values directly in the table. Updates save instantly.</p>
+          <p className="hint">
+            Change values directly in the table. Updates save instantly.
+          </p>
         </div>
         <div className="table-wrap">
           <table className="table table-hover align-middle mb-0">
@@ -240,14 +332,19 @@ export default function ManagePage() {
             <tbody>
               {filtered.length ? (
                 [...filtered]
-                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                  .sort(
+                    (a, b) =>
+                      new Date(a.date).getTime() - new Date(b.date).getTime(),
+                  )
                   .map((event) => (
                     <tr key={event.id}>
                       <td>
                         <input
                           className="cell-input wide"
                           value={event.name}
-                          onChange={(e) => updateField(event.id, "name", e.target.value)}
+                          onChange={(e) =>
+                            updateField(event.id, "name", e.target.value)
+                          }
                         />
                       </td>
                       <td>
@@ -255,14 +352,18 @@ export default function ManagePage() {
                           className="cell-input date"
                           type="date"
                           value={event.date}
-                          onChange={(e) => updateField(event.id, "date", e.target.value)}
+                          onChange={(e) =>
+                            updateField(event.id, "date", e.target.value)
+                          }
                         />
                       </td>
                       <td>
                         <select
                           className="cell-input select"
                           value={event.group}
-                          onChange={(e) => updateField(event.id, "group", e.target.value)}
+                          onChange={(e) =>
+                            updateField(event.id, "group", e.target.value)
+                          }
                         >
                           {GROUPS.map((groupName) => (
                             <option key={groupName} value={groupName}>
@@ -275,7 +376,9 @@ export default function ManagePage() {
                         <select
                           className="cell-input select"
                           value={event.status}
-                          onChange={(e) => updateField(event.id, "status", e.target.value)}
+                          onChange={(e) =>
+                            updateField(event.id, "status", e.target.value)
+                          }
                         >
                           <option value="completed">Completed</option>
                           <option value="upcoming">Upcoming</option>
@@ -287,7 +390,13 @@ export default function ManagePage() {
                           type="number"
                           min={0}
                           value={event.registrations}
-                          onChange={(e) => updateField(event.id, "registrations", e.target.value)}
+                          onChange={(e) =>
+                            updateField(
+                              event.id,
+                              "registrations",
+                              e.target.value,
+                            )
+                          }
                         />
                       </td>
                       <td>
@@ -296,7 +405,9 @@ export default function ManagePage() {
                           type="number"
                           min={0}
                           value={event.attendees}
-                          onChange={(e) => updateField(event.id, "attendees", e.target.value)}
+                          onChange={(e) =>
+                            updateField(event.id, "attendees", e.target.value)
+                          }
                         />
                       </td>
                       <td>

@@ -27,10 +27,32 @@ export default function DashboardPage() {
   const [sort, setSort] = useState<SortMode>("date-asc");
 
   useEffect(() => {
-    setEvents(loadEvents());
-    const onStorage = () => setEvents(loadEvents());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    let mounted = true;
+
+    const refresh = async () => {
+      try {
+        const nextEvents = await loadEvents();
+        if (mounted) {
+          setEvents(nextEvents);
+        }
+      } catch (error) {
+        console.error("Could not refresh events from the database.", error);
+      }
+    };
+
+    void refresh();
+    const refreshInterval = window.setInterval(refresh, 10000);
+
+    const onUpdate = () => {
+      void refresh();
+    };
+
+    window.addEventListener("blueprint-events-updated", onUpdate);
+    return () => {
+      mounted = false;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("blueprint-events-updated", onUpdate);
+    };
   }, []);
 
   const groupOptions = useMemo(
@@ -60,7 +82,9 @@ export default function DashboardPage() {
         sorted.sort((a, b) => byDateAsc(b, a));
         break;
       case "registrations-desc":
-        sorted.sort((a, b) => b.registrations - a.registrations || byDateAsc(a, b));
+        sorted.sort(
+          (a, b) => b.registrations - a.registrations || byDateAsc(a, b),
+        );
         break;
       case "attendees-desc":
         sorted.sort((a, b) => b.attendees - a.attendees || byDateAsc(a, b));
@@ -79,16 +103,24 @@ export default function DashboardPage() {
     () =>
       [...events]
         .filter((event) => event.status === "upcoming")
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0],
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        )[0],
     [events],
   );
 
-  const completedCount = events.filter((event) => event.status === "completed").length;
-  const upcomingCount = events.filter((event) => event.status === "upcoming").length;
+  const completedCount = events.filter(
+    (event) => event.status === "completed",
+  ).length;
+  const upcomingCount = events.filter(
+    (event) => event.status === "upcoming",
+  ).length;
   const totalEvents = events.length || 1;
   const completedPercent = (completedCount / totalEvents) * 100;
   const upcomingPercent = (upcomingCount / totalEvents) * 100;
-  const topEvent = [...events].sort((a, b) => b.registrations - a.registrations)[0];
+  const topEvent = [...events].sort(
+    (a, b) => b.registrations - a.registrations,
+  )[0];
 
   const groupBars = useMemo(() => {
     const list = calcGroupSummary(filtered).sort(
@@ -99,8 +131,13 @@ export default function DashboardPage() {
   }, [filtered]);
 
   const topEvents = useMemo(() => {
-    const list = [...filtered].sort((a, b) => b.registrations - a.registrations).slice(0, 6);
-    return { list, max: Math.max(...list.map((event) => event.registrations), 1) };
+    const list = [...filtered]
+      .sort((a, b) => b.registrations - a.registrations)
+      .slice(0, 6);
+    return {
+      list,
+      max: Math.max(...list.map((event) => event.registrations), 1),
+    };
   }, [filtered]);
 
   const monthly = useMemo(() => {
@@ -109,12 +146,18 @@ export default function DashboardPage() {
       if (!event.date) return;
       const date = new Date(`${event.date}T00:00:00`);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      monthlyMap.set(key, (monthlyMap.get(key) || 0) + number(event.registrations));
+      monthlyMap.set(
+        key,
+        (monthlyMap.get(key) || 0) + number(event.registrations),
+      );
     });
     const list = [...monthlyMap.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, registrations]) => ({ month, registrations }));
-    return { list, max: Math.max(...list.map((entry) => entry.registrations), 1) };
+    return {
+      list,
+      max: Math.max(...list.map((entry) => entry.registrations), 1),
+    };
   }, [filtered]);
 
   const upcomingFocus = useMemo(
@@ -127,9 +170,9 @@ export default function DashboardPage() {
   );
 
   const completedAngle =
-    ((filtered.filter((event) => event.status === "completed").length /
+    (filtered.filter((event) => event.status === "completed").length /
       Math.max(filtered.length, 1)) *
-      360) || 0;
+      360 || 0;
 
   const clearFilters = () => {
     setSearch("");
@@ -145,7 +188,8 @@ export default function DashboardPage() {
           <p className="eyebrow">Blueprint Statistics</p>
           <h1 className="mb-2">AYB Event Rego Dashboard</h1>
           <p className="subtitle">
-            Live browser snapshot of registrations, attendees, and upcoming event demand.
+            Live browser snapshot of registrations, attendees, and upcoming
+            event demand.
           </p>
         </div>
         <div className="hero-actions">
@@ -173,7 +217,9 @@ export default function DashboardPage() {
         </article>
         <article>
           <p className="metric-label">Upcoming Registrations</p>
-          <p className="metric-value">{formatInt(totals.upcomingRegistrations)}</p>
+          <p className="metric-value">
+            {formatInt(totals.upcomingRegistrations)}
+          </p>
         </article>
         <article>
           <p className="metric-label">Attendee Rate</p>
@@ -185,7 +231,9 @@ export default function DashboardPage() {
         </article>
         <article>
           <p className="metric-label">Next Event</p>
-          <p className="metric-value compact">{nextEvent ? nextEvent.name : "-"}</p>
+          <p className="metric-value compact">
+            {nextEvent ? nextEvent.name : "-"}
+          </p>
         </article>
       </section>
 
@@ -201,7 +249,9 @@ export default function DashboardPage() {
             <div className="progress-track" aria-hidden="true">
               <div
                 className="progress-fill"
-                style={{ width: `${Math.min(Math.max(totals.attendeeRate, 0), 100)}%` }}
+                style={{
+                  width: `${Math.min(Math.max(totals.attendeeRate, 0), 100)}%`,
+                }}
               />
             </div>
             <p className="hint">Attendees vs total registrations</p>
@@ -212,8 +262,14 @@ export default function DashboardPage() {
               <span>{completedCount}</span> / <span>{upcomingCount}</span>
             </p>
             <div className="split-track" aria-hidden="true">
-              <div className="split-fill completed" style={{ width: `${completedPercent}%` }} />
-              <div className="split-fill upcoming" style={{ width: `${upcomingPercent}%` }} />
+              <div
+                className="split-fill completed"
+                style={{ width: `${completedPercent}%` }}
+              />
+              <div
+                className="split-fill upcoming"
+                style={{ width: `${upcomingPercent}%` }}
+              />
             </div>
             <p className="hint">
               <span>{completedPercent.toFixed(1)}%</span> completed,{" "}
@@ -245,18 +301,33 @@ export default function DashboardPage() {
                   }}
                 >
                   <div className="pie-center">
-                    {Math.round((filtered.filter((event) => event.status === "completed").length / filtered.length) * 100)}
+                    {Math.round(
+                      (filtered.filter((event) => event.status === "completed")
+                        .length /
+                        filtered.length) *
+                        100,
+                    )}
                     %
                   </div>
                 </div>
                 <div className="pie-legend">
                   <span>
                     <i className="dot completed" />
-                    Completed ({filtered.filter((event) => event.status === "completed").length})
+                    Completed (
+                    {
+                      filtered.filter((event) => event.status === "completed")
+                        .length
+                    }
+                    )
                   </span>
                   <span>
                     <i className="dot upcoming" />
-                    Upcoming ({filtered.filter((event) => event.status === "upcoming").length})
+                    Upcoming (
+                    {
+                      filtered.filter((event) => event.status === "upcoming")
+                        .length
+                    }
+                    )
                   </span>
                 </div>
               </>
@@ -275,10 +346,14 @@ export default function DashboardPage() {
                   <div className="bar-track">
                     <div
                       className="bar-fill"
-                      style={{ width: `${(event.registrations / topEvents.max) * 100}%` }}
+                      style={{
+                        width: `${(event.registrations / topEvents.max) * 100}%`,
+                      }}
                     />
                   </div>
-                  <span className="bar-value">{formatInt(event.registrations)}</span>
+                  <span className="bar-value">
+                    {formatInt(event.registrations)}
+                  </span>
                 </div>
               ))
             ) : (
@@ -294,20 +369,28 @@ export default function DashboardPage() {
           {monthly.list.length ? (
             monthly.list.map((entry) => {
               const [year, month] = entry.month.split("-");
-              const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(
-                "en-AU",
-                { month: "short", year: "numeric" },
-              );
+              const label = new Date(
+                Number(year),
+                Number(month) - 1,
+                1,
+              ).toLocaleDateString("en-AU", {
+                month: "short",
+                year: "numeric",
+              });
               return (
                 <div className="bar-row" key={entry.month}>
                   <span className="bar-label">{label}</span>
                   <div className="bar-track">
                     <div
                       className="bar-fill"
-                      style={{ width: `${(entry.registrations / monthly.max) * 100}%` }}
+                      style={{
+                        width: `${(entry.registrations / monthly.max) * 100}%`,
+                      }}
                     />
                   </div>
-                  <span className="bar-value">{formatInt(entry.registrations)}</span>
+                  <span className="bar-value">
+                    {formatInt(entry.registrations)}
+                  </span>
                 </div>
               );
             })
@@ -330,7 +413,11 @@ export default function DashboardPage() {
         </label>
         <label>
           Group
-          <select className="form-select" value={group} onChange={(e) => setGroup(e.target.value)}>
+          <select
+            className="form-select"
+            value={group}
+            onChange={(e) => setGroup(e.target.value)}
+          >
             <option value="all">All groups</option>
             {groupOptions.map((entry) => (
               <option key={entry} value={entry}>
@@ -341,7 +428,11 @@ export default function DashboardPage() {
         </label>
         <label>
           Status
-          <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select
+            className="form-select"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
             <option value="all">All statuses</option>
             <option value="completed">Completed</option>
             <option value="upcoming">Upcoming</option>
@@ -349,18 +440,31 @@ export default function DashboardPage() {
         </label>
         <label>
           Sort by
-          <select className="form-select" value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+          <select
+            className="form-select"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortMode)}
+          >
             <option value="date-asc">Date (Oldest first)</option>
             <option value="date-desc">Date (Newest first)</option>
-            <option value="registrations-desc">Registrations (High to low)</option>
+            <option value="registrations-desc">
+              Registrations (High to low)
+            </option>
             <option value="attendees-desc">Attendees (High to low)</option>
             <option value="name-asc">Name (A-Z)</option>
           </select>
         </label>
-        <button id="clearFiltersBtn" className="btn ghost" type="button" onClick={clearFilters}>
+        <button
+          id="clearFiltersBtn"
+          className="btn ghost"
+          type="button"
+          onClick={clearFilters}
+        >
           Clear Filters
         </button>
-        <p className="filter-meta">Showing {formatInt(filtered.length)} events</p>
+        <p className="filter-meta">
+          Showing {formatInt(filtered.length)} events
+        </p>
       </section>
 
       <section className="grid-two">
@@ -374,10 +478,14 @@ export default function DashboardPage() {
                   <div className="bar-track">
                     <div
                       className="bar-fill"
-                      style={{ width: `${(entry.registrations / groupBars.max) * 100}%` }}
+                      style={{
+                        width: `${(entry.registrations / groupBars.max) * 100}%`,
+                      }}
                     />
                   </div>
-                  <span className="bar-value">{formatInt(entry.registrations)}</span>
+                  <span className="bar-value">
+                    {formatInt(entry.registrations)}
+                  </span>
                 </div>
               ))
             ) : (
@@ -393,7 +501,9 @@ export default function DashboardPage() {
               upcomingFocus.map((event) => (
                 <article className="event-item" key={event.id}>
                   <strong>{event.name}</strong>
-                  <span className="event-count">{formatInt(event.registrations)}</span>
+                  <span className="event-count">
+                    {formatInt(event.registrations)}
+                  </span>
                   <span>
                     {formatDate(event.date)} - {event.group}
                   </span>
@@ -435,7 +545,9 @@ export default function DashboardPage() {
                     <td>{formatDate(event.date)}</td>
                     <td>{event.group}</td>
                     <td>
-                      <span className={`status-pill ${event.status}`}>{event.status}</span>
+                      <span className={`status-pill ${event.status}`}>
+                        {event.status}
+                      </span>
                     </td>
                     <td>{formatInt(event.registrations)}</td>
                     <td>{formatInt(event.attendees)}</td>

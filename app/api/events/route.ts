@@ -1,11 +1,26 @@
 import { NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 
-// Initialize Redis from environment variables (KV_REST_API_URL and KV_REST_API_TOKEN)
-// These will be automatically populated by Vercel when you link the KV database.
-const redis = Redis.fromEnv();
+const redisUrl =
+  process.env.UPSTASH_REDIS_REST_URL ??
+  process.env.KV_REST_API_URL ??
+  process.env.STORAGE_URL ??
+  process.env.REDIS_URL;
+const redisToken =
+  process.env.UPSTASH_REDIS_REST_TOKEN ??
+  process.env.KV_REST_API_TOKEN ??
+  process.env.STORAGE_TOKEN ??
+  process.env.REDIS_TOKEN;
+
+const redis =
+  redisUrl && redisToken
+    ? new Redis({ url: redisUrl, token: redisToken })
+    : null;
 
 const STORAGE_KEY = "blueprint-ayb-dashboard-v1";
+const noStoreHeaders = {
+  "Cache-Control": "no-store, max-age=0",
+};
 
 // Seed data as fallback when the database is empty
 const seedData = [
@@ -175,29 +190,45 @@ const seedData = [
 
 export async function GET() {
   try {
+    if (!redis) {
+      return NextResponse.json(
+        { error: "Redis is not configured" },
+        { status: 503, headers: noStoreHeaders },
+      );
+    }
+
     const data = await redis.get(STORAGE_KEY);
     if (!data) {
-      // If nothing exists in the database, return the seed data
-      return NextResponse.json(seedData);
+      await redis.set(STORAGE_KEY, seedData);
+      return NextResponse.json(seedData, { headers: noStoreHeaders });
     }
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: noStoreHeaders });
   } catch (error) {
     console.error("Error fetching from Redis:", error);
-    // Fallback to local data on error so the app doesn't crash
-    return NextResponse.json(seedData);
+    return NextResponse.json(
+      { error: "Failed to fetch events" },
+      { status: 500, headers: noStoreHeaders },
+    );
   }
 }
 
 export async function POST(request: Request) {
   try {
+    if (!redis) {
+      return NextResponse.json(
+        { error: "Redis is not configured" },
+        { status: 503, headers: noStoreHeaders },
+      );
+    }
+
     const events = await request.json();
     await redis.set(STORAGE_KEY, events);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: noStoreHeaders });
   } catch (error) {
     console.error("Error saving to Redis:", error);
     return NextResponse.json(
       { error: "Failed to save events" },
-      { status: 500 },
+      { status: 500, headers: noStoreHeaders },
     );
   }
 }
