@@ -17,6 +17,8 @@ export default function ManagePage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("Data is synced to the cloud.");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -26,14 +28,21 @@ export default function ManagePage() {
         const nextEvents = await loadEvents();
         if (mounted) {
           setEvents(nextEvents);
+          setLoadError("");
+          setMessage("Data is synced to the cloud.");
         }
       } catch (error) {
         if (mounted) {
-          setMessage(
+          const nextError =
             error instanceof Error
               ? error.message
-              : "Could not load cloud data.",
-          );
+              : "Could not load cloud data.";
+          setLoadError(nextError);
+          setMessage(nextError);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
         }
       }
     };
@@ -64,6 +73,8 @@ export default function ManagePage() {
   }, [events, search]);
 
   const totals = useMemo(() => calcTotals(events), [events]);
+  const metricValue = (value: number) =>
+    isLoading ? "..." : loadError ? "-" : formatInt(value);
 
   const persist = async (nextEvents: EventItem[], nextMessage: string) => {
     const previousEvents = events;
@@ -193,19 +204,21 @@ export default function ManagePage() {
       >
         <article>
           <p className="metric-label">Total Registrations</p>
-          <p className="metric-value">{formatInt(totals.registrations)}</p>
+          <p className="metric-value">{metricValue(totals.registrations)}</p>
         </article>
         <article>
           <p className="metric-label">Total Attendees</p>
-          <p className="metric-value">{formatInt(totals.attendees)}</p>
+          <p className="metric-value">{metricValue(totals.attendees)}</p>
         </article>
         <article>
           <p className="metric-label">Events</p>
-          <p className="metric-value">{formatInt(events.length)}</p>
+          <p className="metric-value">{metricValue(events.length)}</p>
         </article>
         <article>
           <p className="metric-label">Storage</p>
-          <p className="metric-value compact">Cloud</p>
+          <p className="metric-value compact">
+            {loadError ? "Cloud unavailable" : "Cloud"}
+          </p>
         </article>
       </section>
 

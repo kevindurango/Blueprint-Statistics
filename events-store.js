@@ -191,7 +191,7 @@
       const response = await fetch("/api/events");
       if (response.ok) {
         const parsed = await response.json();
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }
@@ -201,7 +201,9 @@
         err,
       );
     }
-    return structuredClone(seedData);
+    const fresh = structuredClone(seedData);
+    await saveEvents(fresh);
+    return fresh;
   }
 
   async function saveEvents(events) {

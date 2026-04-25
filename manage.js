@@ -8,6 +8,7 @@ const GROUPS = [
 const state = {
   events: [],
   search: "",
+  pendingRegistrationUpdates: new Set(),
 };
 
 const eventsTableBody = document.getElementById("eventsTableBody");
@@ -20,6 +21,7 @@ const dataMessage = document.getElementById("dataMessage");
 const manageRegistrations = document.getElementById("manageRegistrations");
 const manageAttendees = document.getElementById("manageAttendees");
 const manageEvents = document.getElementById("manageEvents");
+const saveChangesBtn = document.getElementById("saveChangesBtn");
 
 function createId() {
   if (crypto.randomUUID) {
@@ -43,6 +45,15 @@ function getFilteredEvents() {
 
 function showMessage(message) {
   dataMessage.textContent = message;
+}
+
+function setUpdateButtonState(hasPendingUpdates) {
+  saveChangesBtn.disabled = !hasPendingUpdates;
+  if (hasPendingUpdates) {
+    saveChangesBtn.classList.add("pulse");
+  } else {
+    saveChangesBtn.classList.remove("pulse");
+  }
 }
 
 function updateSummary() {
@@ -99,6 +110,8 @@ function buildTableRow(event) {
   const registrations = document.createElement("td");
   const attendees = document.createElement("td");
   const action = document.createElement("td");
+  const actionWrap = document.createElement("div");
+  const updateBtn = document.createElement("button");
   const deleteBtn = document.createElement("button");
 
   tr.dataset.id = event.id;
@@ -120,11 +133,22 @@ function buildTableRow(event) {
   registrations.appendChild(createInput(event, "registrations", "number"));
   attendees.appendChild(createInput(event, "attendees", "number"));
 
+  updateBtn.type = "button";
+  updateBtn.className = "link-btn update-btn";
+  if (!state.pendingRegistrationUpdates.has(event.id)) {
+    updateBtn.classList.add("is-hidden");
+  }
+  updateBtn.dataset.action = "update-registration";
+  updateBtn.textContent = "Update";
+
   deleteBtn.type = "button";
   deleteBtn.className = "link-btn";
   deleteBtn.dataset.action = "delete";
   deleteBtn.textContent = "Delete";
-  action.appendChild(deleteBtn);
+
+  actionWrap.className = "manage-table-actions";
+  actionWrap.append(updateBtn, deleteBtn);
+  action.appendChild(actionWrap);
 
   tr.append(name, date, group, status, registrations, attendees, action);
   return tr;
@@ -151,16 +175,19 @@ function renderTable() {
     });
 }
 
-const saveChangesBtn = document.getElementById("saveChangesBtn");
-
-function saveAndRender(message = "Saved to cloud.") {
-  window.AYBStore.saveEvents(state.events);
+async function saveAndRender(message = "Saved changes to cloud.") {
+  await window.AYBStore.saveEvents(state.events);
   renderTable();
   updateSummary();
   showMessage(message);
 }
 
-function updateEventField(eventId, field, rawValue) {
+function updateEventField(
+  eventId,
+  field,
+  rawValue,
+  options = { persist: false },
+) {
   const event = state.events.find((entry) => entry.id === eventId);
   if (!event) {
     return;
@@ -173,8 +200,17 @@ function updateEventField(eventId, field, rawValue) {
   }
 
   updateSummary();
-  saveChangesBtn.classList.add("pulse"); // Optional subtle visual cue
-  saveChangesBtn.innerText = "Unsaved Changes: Save to Cloud";
+
+  if (field === "registrations") {
+    state.pendingRegistrationUpdates.add(eventId);
+    setUpdateButtonState(true);
+    showMessage("Registration edited. Click Update Registrations to sync.");
+    return;
+  }
+
+  if (options.persist) {
+    void saveAndRender("Changes synced to cloud.");
+  }
 }
 
 function normalizeEvent(event) {
@@ -190,46 +226,21 @@ function normalizeEvent(event) {
 }
 
 saveChangesBtn.addEventListener("click", () => {
-  saveAndRender("Successfully saved all changes to the cloud.");
-  saveChangesBtn.classList.remove("pulse");
-  saveChangesBtn.innerText = "Save Changes to Cloud";
+  if (!state.pendingRegistrationUpdates.size) {
+    return;
+  }
+
+  state.pendingRegistrationUpdates.clear();
+  setUpdateButtonState(false);
+  void saveAndRender("Registration counts synced to cloud.");
 });
 
 eventsTableBody.addEventListener("input", (e) => {
   const target = e.target;
-  if (!(target instanceof HTMLInputElement) || !target.dataset.field) {
-    return;
-  }
-
-  const row = target.closest("tr");
-  if (!row) {
-    return;
-  }
-
-  updateEventField(row.dataset.id, target.dataset.field, target.value);
-});
-
-eventsTableBody.addEventListener("change", (e) => {
-  const target = e.target;
-  if (!(target instanceof HTMLSelectElement) || !target.dataset.field) {
-    return;
-  }
-
-  const row = target.closest("tr");
-  if (!row) {
-    return;
-  }
-
-  updateEventField(row.dataset.id, target.dataset.field, target.value);
-  // Do NOT renderTable here or it breaks input focus if it was somehow involved, but usually ok since it's a select.
-  // Actually, we shouldn't renderTable immediately if user is making bulk edits. Let them click Save.
-});
-
-eventsTableBody.addEventListener("click", (e) => {
-  const target = e.target;
   if (
-    !(target instanceof HTMLButtonElement) ||
-    target.dataset.action !== "delete"
+    !(target instanceof HTMLInputElement) ||
+    !target.dataset.field ||
+    target.dataset.field !== "registrations"
   ) {
     return;
   }
@@ -239,8 +250,70 @@ eventsTableBody.addEventListener("click", (e) => {
     return;
   }
 
-  state.events = state.events.filter((event) => event.id !== row.dataset.id);
-  saveAndRender("Event deleted.");
+  updateEventField(row.dataset.id, target.dataset.field, target.value);
+  const updateBtn = row.querySelector('[data-action="update-registration"]');
+  if (updateBtn instanceof HTMLButtonElement) {
+    updateBtn.classList.remove("is-hidden");
+  }
+});
+
+eventsTableBody.addEventListener("change", (e) => {
+  const target = e.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const row = target.closest("tr");
+  if (!row) {
+    return;
+  }
+
+  if (target instanceof HTMLInputElement && target.dataset.field) {
+    if (target.dataset.field === "registrations") {
+      return;
+    }
+    updateEventField(row.dataset.id, target.dataset.field, target.value, {
+      persist: true,
+    });
+    return;
+  }
+
+  if (!(target instanceof HTMLSelectElement) || !target.dataset.field) {
+    return;
+  }
+
+  updateEventField(row.dataset.id, target.dataset.field, target.value, {
+    persist: true,
+  });
+});
+
+eventsTableBody.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const row = target.closest("tr");
+  if (!row) {
+    return;
+  }
+
+  if (target.dataset.action === "update-registration") {
+    if (!state.pendingRegistrationUpdates.size) {
+      return;
+    }
+    state.pendingRegistrationUpdates.clear();
+    setUpdateButtonState(false);
+    void saveAndRender("Registration counts synced to cloud.");
+    return;
+  }
+
+  if (target.dataset.action === "delete") {
+    state.pendingRegistrationUpdates.delete(row.dataset.id);
+    setUpdateButtonState(Boolean(state.pendingRegistrationUpdates.size));
+    state.events = state.events.filter((event) => event.id !== row.dataset.id);
+    void saveAndRender("Event deleted from cloud data.");
+  }
 });
 
 addEventForm.addEventListener("submit", (e) => {
@@ -264,7 +337,7 @@ addEventForm.addEventListener("submit", (e) => {
 
   state.events.push(newEvent);
   addEventForm.reset();
-  saveAndRender("Event added.");
+  void saveAndRender("Event added to cloud data.");
 });
 
 manageSearchInput.addEventListener("input", () => {
@@ -283,7 +356,7 @@ exportDataBtn.addEventListener("click", () => {
   link.download = "blueprint-statistics-events.json";
   link.click();
   URL.revokeObjectURL(url);
-  showMessage("Exported the current browser data as JSON.");
+  showMessage("Exported the current cloud data as JSON.");
 });
 
 importDataInput.addEventListener("change", () => {
@@ -301,7 +374,7 @@ importDataInput.addEventListener("change", () => {
       }
 
       state.events = parsed.map(normalizeEvent);
-      saveAndRender("Imported JSON and replaced the current browser data.");
+      void saveAndRender("Imported JSON and replaced the cloud data.");
     } catch (error) {
       showMessage(error.message || "Could not import this JSON file.");
     } finally {
@@ -312,8 +385,10 @@ importDataInput.addEventListener("change", () => {
 });
 
 resetDataBtn.addEventListener("click", () => {
-  state.events = window.AYBStore.resetEvents();
-  saveAndRender("Restored the original sample data.");
+  void (async () => {
+    state.events = await window.AYBStore.resetEvents();
+    await saveAndRender("Restored the original sample data in cloud.");
+  })();
 });
 
 // Initial load
@@ -328,5 +403,6 @@ resetDataBtn.addEventListener("click", () => {
 
   loadingIndicator.remove();
   renderTable();
+  updateSummary();
+  setUpdateButtonState(false);
 })();
-updateSummary();

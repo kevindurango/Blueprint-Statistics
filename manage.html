@@ -25,7 +25,7 @@
             <div class="hero-content">
                 <p class="eyebrow">Blueprint Statistics</p>
                 <h1 class="mb-2">Manage Event Data</h1>
-                <p class="subtitle">Add, edit, import, and export event records. Changes are saved in this browser only.
+                <p class="subtitle">Add, edit, import, and export event records. Changes are saved to the cloud database.
                 </p>
             </div>
             <div class="hero-actions">
@@ -42,19 +42,19 @@
         <section class="card metrics manage-metrics" aria-label="Current data summary">
             <article>
                 <p class="metric-label">Total Registrations</p>
-                <p class="metric-value" id="manageRegistrations">0</p>
+                <p class="metric-value" id="manageRegistrations">...</p>
             </article>
             <article>
                 <p class="metric-label">Total Attendees</p>
-                <p class="metric-value" id="manageAttendees">0</p>
+                <p class="metric-value" id="manageAttendees">...</p>
             </article>
             <article>
                 <p class="metric-label">Events</p>
-                <p class="metric-value" id="manageEvents">0</p>
+                <p class="metric-value" id="manageEvents">...</p>
             </article>
             <article>
                 <p class="metric-label">Storage</p>
-                <p class="metric-value compact">Local</p>
+                <p class="metric-value compact">Cloud</p>
             </article>
         </section>
 
@@ -70,8 +70,7 @@
                     <input id="importDataInput" type="file" accept="application/json,.json" />
                 </label>
             </div>
-            <p id="dataMessage" class="hint data-message" aria-live="polite">Data is not shared across browsers or
-                devices.</p>
+            <p id="dataMessage" class="hint data-message" aria-live="polite">Data is synced through the cloud database.</p>
         </section>
 
         <section class="card">
@@ -117,9 +116,9 @@
             <div class="table-head d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h2 class="mb-1">Edit Event Details</h2>
-                    <p class="hint mb-0">Change values locally, then click save when you are ready.</p>
+                    <p class="hint mb-0">Update registration counts, then click update.</p>
                 </div>
-                <button id="saveChangesBtn" class="btn" type="button">Save Changes to Cloud</button>
+                <button id="saveChangesBtn" class="btn" type="button" disabled>Update Registrations</button>
             </div>
             <div class="table-wrap">
                 <table class="table table-hover align-middle mb-0">

@@ -198,7 +198,7 @@ export async function GET() {
     }
 
     const data = await redis.get(STORAGE_KEY);
-    if (!data) {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       await redis.set(STORAGE_KEY, seedData);
       return NextResponse.json(seedData, { headers: noStoreHeaders });
     }
