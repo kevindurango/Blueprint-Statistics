@@ -2,6 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Database, FilterX, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   calcGroupSummary,
   calcTotals,
@@ -19,12 +39,38 @@ type SortMode =
   | "attendees-desc"
   | "name-asc";
 
+function MetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-5">
+        <div className="mb-3 h-1 w-12 rounded-full bg-gradient-to-r from-blue-700 to-emerald-600" />
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {label}
+        </p>
+        <p className="mt-2 truncate text-3xl font-extrabold text-slate-950">
+          {value}
+        </p>
+        {detail ? <p className="mt-1 text-sm text-slate-500">{detail}</p> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState("all");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState<SortMode>("date-asc");
+  const [message, setMessage] = useState("Syncing cloud data...");
 
   useEffect(() => {
     let mounted = true;
@@ -34,20 +80,22 @@ export default function DashboardPage() {
         const nextEvents = await loadEvents();
         if (mounted) {
           setEvents(nextEvents);
+          setMessage("Synced with cloud database.");
         }
       } catch (error) {
-        console.error("Could not refresh events from the database.", error);
+        if (mounted) {
+          setMessage(
+            error instanceof Error ? error.message : "Could not load cloud data.",
+          );
+        }
       }
     };
 
     void refresh();
     const refreshInterval = window.setInterval(refresh, 10000);
-
-    const onUpdate = () => {
-      void refresh();
-    };
-
+    const onUpdate = () => void refresh();
     window.addEventListener("blueprint-events-updated", onUpdate);
+
     return () => {
       mounted = false;
       window.clearInterval(refreshInterval);
@@ -108,26 +156,25 @@ export default function DashboardPage() {
         )[0],
     [events],
   );
-
   const completedCount = events.filter(
     (event) => event.status === "completed",
   ).length;
   const upcomingCount = events.filter(
     (event) => event.status === "upcoming",
   ).length;
-  const totalEvents = events.length || 1;
-  const completedPercent = (completedCount / totalEvents) * 100;
-  const upcomingPercent = (upcomingCount / totalEvents) * 100;
   const topEvent = [...events].sort(
     (a, b) => b.registrations - a.registrations,
   )[0];
+  const completedPercent =
+    (filtered.filter((event) => event.status === "completed").length /
+      Math.max(filtered.length, 1)) *
+    100;
 
   const groupBars = useMemo(() => {
     const list = calcGroupSummary(filtered).sort(
       (a, b) => b.registrations - a.registrations,
     );
-    const max = Math.max(...list.map((g) => g.registrations), 1);
-    return { list, max };
+    return { list, max: Math.max(...list.map((g) => g.registrations), 1) };
   }, [filtered]);
 
   const topEvents = useMemo(() => {
@@ -169,11 +216,6 @@ export default function DashboardPage() {
     [events],
   );
 
-  const completedAngle =
-    (filtered.filter((event) => event.status === "completed").length /
-      Math.max(filtered.length, 1)) *
-      360 || 0;
-
   const clearFilters = () => {
     setSearch("");
     setGroup("all");
@@ -182,386 +224,280 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="dashboard container-fluid px-3 px-lg-4">
-      <header className="hero mb-4">
+    <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
+      <header className="mb-6 flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="eyebrow">Blueprint Statistics</p>
-          <h1 className="mb-2">AYB Event Rego Dashboard</h1>
-          <p className="subtitle">
-            Live browser snapshot of registrations, attendees, and upcoming
-            event demand.
-          </p>
+          <Badge variant="outline" className="mb-4 rounded-md bg-blue-50 text-blue-800">
+            Blueprint Statistics
+          </Badge>
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 lg:text-5xl">
+            AYB Event Rego Dashboard
+          </h1>
+          <p className="mt-3 max-w-2xl text-base text-slate-600">{message}</p>
         </div>
-        <div className="hero-actions">
-          <Link className="btn" href="/manage">
+        <Button asChild>
+          <Link href="/manage">
+            <Settings />
             Manage Data
           </Link>
-        </div>
+        </Button>
       </header>
 
-      <nav className="page-nav mb-3" aria-label="Pages">
-        <Link className="active" href="/">
-          Dashboard
-        </Link>
-        <Link href="/manage">Manage Data</Link>
+      <nav className="mb-5 inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+        <Button asChild size="sm">
+          <Link href="/">Dashboard</Link>
+        </Button>
+        <Button asChild size="sm" variant="ghost">
+          <Link href="/manage">Manage Data</Link>
+        </Button>
       </nav>
 
-      <section className="card metrics" aria-label="Key metrics">
-        <article>
-          <p className="metric-label">Total Registrations</p>
-          <p className="metric-value">{formatInt(totals.registrations)}</p>
-        </article>
-        <article>
-          <p className="metric-label">Total Attendees</p>
-          <p className="metric-value">{formatInt(totals.attendees)}</p>
-        </article>
-        <article>
-          <p className="metric-label">Upcoming Registrations</p>
-          <p className="metric-value">
-            {formatInt(totals.upcomingRegistrations)}
-          </p>
-        </article>
-        <article>
-          <p className="metric-label">Attendee Rate</p>
-          <p className="metric-value">{totals.attendeeRate.toFixed(1)}%</p>
-        </article>
-        <article>
-          <p className="metric-label">Tracked Events</p>
-          <p className="metric-value">{formatInt(events.length)}</p>
-        </article>
-        <article>
-          <p className="metric-label">Next Event</p>
-          <p className="metric-value compact">
-            {nextEvent ? nextEvent.name : "-"}
-          </p>
-        </article>
+      <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <MetricCard label="Total Registrations" value={formatInt(totals.registrations)} />
+        <MetricCard label="Total Attendees" value={formatInt(totals.attendees)} />
+        <MetricCard
+          label="Upcoming Registrations"
+          value={formatInt(totals.upcomingRegistrations)}
+        />
+        <MetricCard label="Attendee Rate" value={`${totals.attendeeRate.toFixed(1)}%`} />
+        <MetricCard label="Tracked Events" value={formatInt(events.length)} />
+        <MetricCard label="Next Event" value={nextEvent ? nextEvent.name : "-"} />
       </section>
 
-      <section className="card overview-card" aria-label="Statistics overview">
-        <div className="table-head">
-          <h2>Statistics Overview</h2>
-          <p className="hint">Quick visual view of conversion and event mix.</p>
-        </div>
-        <div className="overview-grid">
-          <article className="overview-block">
-            <p className="metric-label">Attendance Conversion</p>
-            <p className="overview-value">{totals.attendeeRate.toFixed(1)}%</p>
-            <div className="progress-track" aria-hidden="true">
+      <section className="mb-5 grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Conversion</CardTitle>
+            <CardDescription>Attendees vs total registrations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-extrabold text-slate-950">
+              {totals.attendeeRate.toFixed(1)}%
+            </p>
+            <div className="mt-4 h-2 rounded-full bg-slate-100">
               <div
-                className="progress-fill"
+                className="h-2 rounded-full bg-gradient-to-r from-emerald-600 to-blue-700"
+                style={{ width: `${Math.min(Math.max(totals.attendeeRate, 0), 100)}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Completed vs Upcoming</CardTitle>
+            <CardDescription>Current event mix</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-extrabold text-slate-950">
+              {completedCount} / {upcomingCount}
+            </p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-2 bg-emerald-600"
                 style={{
-                  width: `${Math.min(Math.max(totals.attendeeRate, 0), 100)}%`,
+                  width: `${(completedCount / Math.max(events.length, 1)) * 100}%`,
                 }}
               />
             </div>
-            <p className="hint">Attendees vs total registrations</p>
-          </article>
-          <article className="overview-block">
-            <p className="metric-label">Completed vs Upcoming Events</p>
-            <p className="overview-value">
-              <span>{completedCount}</span> / <span>{upcomingCount}</span>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Highest Registration Event</CardTitle>
+            <CardDescription>Top event by demand</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="truncate text-2xl font-extrabold text-slate-950">
+              {topEvent?.name || "-"}
             </p>
-            <div className="split-track" aria-hidden="true">
-              <div
-                className="split-fill completed"
-                style={{ width: `${completedPercent}%` }}
-              />
-              <div
-                className="split-fill upcoming"
-                style={{ width: `${upcomingPercent}%` }}
-              />
-            </div>
-            <p className="hint">
-              <span>{completedPercent.toFixed(1)}%</span> completed,{" "}
-              <span>{upcomingPercent.toFixed(1)}%</span> upcoming
-            </p>
-          </article>
-          <article className="overview-block">
-            <p className="metric-label">Highest Registration Event</p>
-            <p className="overview-value compact">{topEvent?.name || "-"}</p>
-            <p className="hint">
+            <p className="mt-2 text-sm text-slate-500">
               {topEvent
                 ? `${formatInt(topEvent.registrations)} registrations, ${formatInt(topEvent.attendees)} attendees`
                 : "No event data available yet."}
             </p>
-          </article>
-        </div>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="grid-two chart-grid" aria-label="Visual analytics">
-        <section className="card">
-          <h2>Event Status Split (Pie)</h2>
-          <div className="chart-wrap">
-            {filtered.length ? (
-              <>
-                <div
-                  className="pie-chart"
-                  style={{
-                    background: `conic-gradient(#8edac8 0deg ${completedAngle}deg, #7abce5 ${completedAngle}deg 360deg)`,
-                  }}
-                >
-                  <div className="pie-center">
-                    {Math.round(
-                      (filtered.filter((event) => event.status === "completed")
-                        .length /
-                        filtered.length) *
-                        100,
-                    )}
-                    %
-                  </div>
-                </div>
-                <div className="pie-legend">
-                  <span>
-                    <i className="dot completed" />
-                    Completed (
-                    {
-                      filtered.filter((event) => event.status === "completed")
-                        .length
-                    }
-                    )
-                  </span>
-                  <span>
-                    <i className="dot upcoming" />
-                    Upcoming (
-                    {
-                      filtered.filter((event) => event.status === "upcoming")
-                        .length
-                    }
-                    )
-                  </span>
-                </div>
-              </>
-            ) : (
-              <p className="empty-state">No data for current filters.</p>
-            )}
-          </div>
-        </section>
-        <section className="card">
-          <h2>Top Events by Registrations (Bar)</h2>
-          <div className="bars chart-bars">
-            {topEvents.list.length ? (
-              topEvents.list.map((event) => (
-                <div className="bar-row" key={event.id}>
-                  <span className="bar-label">{event.name}</span>
-                  <div className="bar-track">
-                    <div
-                      className="bar-fill"
-                      style={{
-                        width: `${(event.registrations / topEvents.max) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="bar-value">
-                    {formatInt(event.registrations)}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">No events to display.</p>
-            )}
-          </div>
-        </section>
+      <section className="mb-5 grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 lg:grid-cols-6">
+        <Input
+          className="lg:col-span-2"
+          type="search"
+          placeholder="Search event or group"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Select value={group} onChange={(e) => setGroup(e.target.value)}>
+          <option value="all">All groups</option>
+          {groupOptions.map((entry) => (
+            <option key={entry} value={entry}>
+              {entry}
+            </option>
+          ))}
+        </Select>
+        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="all">All statuses</option>
+          <option value="completed">Completed</option>
+          <option value="upcoming">Upcoming</option>
+        </Select>
+        <Select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+          <option value="date-asc">Date oldest first</option>
+          <option value="date-desc">Date newest first</option>
+          <option value="registrations-desc">Registrations high to low</option>
+          <option value="attendees-desc">Attendees high to low</option>
+          <option value="name-asc">Name A-Z</option>
+        </Select>
+        <Button type="button" variant="outline" onClick={clearFilters}>
+          <FilterX />
+          Clear
+        </Button>
       </section>
 
-      <section className="card" aria-label="Monthly trend">
-        <h2>Monthly Registrations (Bar)</h2>
-        <div className="bars chart-bars">
-          {monthly.list.length ? (
-            monthly.list.map((entry) => {
+      <section className="mb-5 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Events by Registrations</CardTitle>
+            <CardDescription>Showing {formatInt(filtered.length)} filtered events</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {topEvents.list.map((event) => (
+              <div className="grid grid-cols-[minmax(0,1fr)_2fr_64px] items-center gap-3" key={event.id}>
+                <span className="truncate text-sm font-medium text-slate-700">{event.name}</span>
+                <div className="h-2 rounded-full bg-slate-100">
+                  <div
+                    className="h-2 rounded-full bg-blue-700"
+                    style={{ width: `${(event.registrations / topEvents.max) * 100}%` }}
+                  />
+                </div>
+                <span className="text-right text-xs font-semibold text-slate-500">
+                  {formatInt(event.registrations)}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Focus</CardTitle>
+            <CardDescription>Next events by date</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingFocus.map((event) => (
+              <div
+                className="grid min-h-14 grid-cols-[minmax(0,1fr)_64px_minmax(180px,1fr)] items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                key={event.id}
+              >
+                <strong className="truncate text-sm text-slate-900">{event.name}</strong>
+                <Badge variant="outline" className="justify-center bg-blue-50 font-mono text-blue-800">
+                  {formatInt(event.registrations)}
+                </Badge>
+                <span className="truncate text-right text-sm text-slate-500">
+                  {formatDate(event.date)} - {event.group}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mb-5 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Registrations by Group</CardTitle>
+            <CardDescription>Group-level demand</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {groupBars.list.map((entry) => (
+              <div className="grid grid-cols-[minmax(0,1fr)_2fr_64px] items-center gap-3" key={entry.group}>
+                <span className="truncate text-sm font-medium text-slate-700">{entry.group}</span>
+                <div className="h-2 rounded-full bg-slate-100">
+                  <div
+                    className="h-2 rounded-full bg-emerald-600"
+                    style={{ width: `${(entry.registrations / groupBars.max) * 100}%` }}
+                  />
+                </div>
+                <span className="text-right text-xs font-semibold text-slate-500">
+                  {formatInt(entry.registrations)}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Registrations</CardTitle>
+            <CardDescription>Registration totals by month</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {monthly.list.map((entry) => {
               const [year, month] = entry.month.split("-");
-              const label = new Date(
-                Number(year),
-                Number(month) - 1,
-                1,
-              ).toLocaleDateString("en-AU", {
+              const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("en-AU", {
                 month: "short",
                 year: "numeric",
               });
               return (
-                <div className="bar-row" key={entry.month}>
-                  <span className="bar-label">{label}</span>
-                  <div className="bar-track">
+                <div className="grid grid-cols-[96px_2fr_64px] items-center gap-3" key={entry.month}>
+                  <span className="text-sm font-medium text-slate-700">{label}</span>
+                  <div className="h-2 rounded-full bg-slate-100">
                     <div
-                      className="bar-fill"
-                      style={{
-                        width: `${(entry.registrations / monthly.max) * 100}%`,
-                      }}
+                      className="h-2 rounded-full bg-blue-700"
+                      style={{ width: `${(entry.registrations / monthly.max) * 100}%` }}
                     />
                   </div>
-                  <span className="bar-value">
+                  <span className="text-right text-xs font-semibold text-slate-500">
                     {formatInt(entry.registrations)}
                   </span>
                 </div>
               );
-            })
-          ) : (
-            <p className="empty-state">No monthly data to display.</p>
-          )}
-        </div>
+            })}
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="toolbar-card" aria-label="Dashboard filters">
-        <label>
-          Search
-          <input
-            className="form-control"
-            type="search"
-            placeholder="Search event or group"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
-        <label>
-          Group
-          <select
-            className="form-select"
-            value={group}
-            onChange={(e) => setGroup(e.target.value)}
-          >
-            <option value="all">All groups</option>
-            {groupOptions.map((entry) => (
-              <option key={entry} value={entry}>
-                {entry}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Status
-          <select
-            className="form-select"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="all">All statuses</option>
-            <option value="completed">Completed</option>
-            <option value="upcoming">Upcoming</option>
-          </select>
-        </label>
-        <label>
-          Sort by
-          <select
-            className="form-select"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortMode)}
-          >
-            <option value="date-asc">Date (Oldest first)</option>
-            <option value="date-desc">Date (Newest first)</option>
-            <option value="registrations-desc">
-              Registrations (High to low)
-            </option>
-            <option value="attendees-desc">Attendees (High to low)</option>
-            <option value="name-asc">Name (A-Z)</option>
-          </select>
-        </label>
-        <button
-          id="clearFiltersBtn"
-          className="btn ghost"
-          type="button"
-          onClick={clearFilters}
-        >
-          Clear Filters
-        </button>
-        <p className="filter-meta">
-          Showing {formatInt(filtered.length)} events
-        </p>
-      </section>
-
-      <section className="grid-two">
-        <section className="card">
-          <h2>Registrations by Event Group</h2>
-          <div className="bars" aria-label="Registrations by group">
-            {groupBars.list.length ? (
-              groupBars.list.map((entry) => (
-                <div className="bar-row" key={entry.group}>
-                  <span className="bar-label">{entry.group}</span>
-                  <div className="bar-track">
-                    <div
-                      className="bar-fill"
-                      style={{
-                        width: `${(entry.registrations / groupBars.max) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="bar-value">
-                    {formatInt(entry.registrations)}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">No matching groups.</p>
-            )}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <div>
+            <CardTitle>Event Details</CardTitle>
+            <CardDescription>
+              {ordered.length ? `${ordered.length} of ${events.length} events shown.` : "No matching events."}
+            </CardDescription>
           </div>
-        </section>
-
-        <section className="card">
-          <h2>Upcoming Focus</h2>
-          <div className="event-stack" aria-label="Upcoming events">
-            {upcomingFocus.length ? (
-              upcomingFocus.map((event) => (
-                <article className="event-item" key={event.id}>
-                  <strong>{event.name}</strong>
-                  <span className="event-count">
-                    {formatInt(event.registrations)}
-                  </span>
-                  <span>
-                    {formatDate(event.date)} - {event.group}
-                  </span>
-                </article>
-              ))
-            ) : (
-              <p className="empty-state">No upcoming events.</p>
-            )}
-          </div>
-        </section>
-      </section>
-
-      <section className="card" aria-label="Event table">
-        <div className="table-head">
-          <h2>Event Details</h2>
-          <p className="hint">
-            {ordered.length
-              ? `${ordered.length} of ${events.length} events shown.`
-              : "Try clearing the filters or add a new event."}
-          </p>
-        </div>
-        <div className="table-wrap">
-          <table className="table table-hover align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Event</th>
-                <th>Date</th>
-                <th>Group</th>
-                <th>Status</th>
-                <th>Registrations</th>
-                <th>Attendees</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordered.length ? (
-                ordered.map((event) => (
-                  <tr key={event.id}>
-                    <td>{event.name}</td>
-                    <td>{formatDate(event.date)}</td>
-                    <td>{event.group}</td>
-                    <td>
-                      <span className={`status-pill ${event.status}`}>
-                        {event.status}
-                      </span>
-                    </td>
-                    <td>{formatInt(event.registrations)}</td>
-                    <td>{formatInt(event.attendees)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6}>No events match the current filters.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <Badge variant="secondary">
+            <Database className="mr-1 size-3" />
+            Cloud
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Event</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Group</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Registrations</TableHead>
+                <TableHead>Attendees</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ordered.map((event) => (
+                <TableRow key={event.id}>
+                  <TableCell className="font-medium text-slate-950">{event.name}</TableCell>
+                  <TableCell>{formatDate(event.date)}</TableCell>
+                  <TableCell>{event.group}</TableCell>
+                  <TableCell>
+                    <Badge variant={event.status === "completed" ? "success" : "secondary"}>
+                      {event.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatInt(event.registrations)}</TableCell>
+                  <TableCell>{formatInt(event.attendees)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </main>
   );
 }
