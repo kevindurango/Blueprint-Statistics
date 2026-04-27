@@ -334,17 +334,20 @@ function renderUpcomingList() {
 
   upcoming.forEach((event) => {
     const item = document.createElement("article");
+    const content = document.createElement("div");
     const title = document.createElement("strong");
     const meta = document.createElement("span");
     const count = document.createElement("span");
 
     item.className = "event-item";
+    content.className = "event-content";
     title.textContent = event.name;
     meta.textContent = `${window.AYBStore.formatDate(event.date)} - ${event.group}`;
     count.className = "event-count";
     count.textContent = window.AYBStore.formatInt(event.registrations);
 
-    item.append(title, count, meta);
+    content.append(title, meta);
+    item.append(content, count);
     upcomingList.appendChild(item);
   });
 }

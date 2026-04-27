@@ -55,10 +55,21 @@ function MetricCard({
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {label}
         </p>
-        <p className="mt-2 truncate text-3xl font-extrabold text-slate-950">
+        <p
+          className="mt-2 text-3xl font-extrabold leading-tight text-slate-950"
+          title={value}
+          style={{
+            whiteSpace: "normal",
+            overflow: "visible",
+            textOverflow: "clip",
+            overflowWrap: "anywhere",
+          }}
+        >
           {value}
         </p>
-        {detail ? <p className="mt-1 text-sm text-slate-500">{detail}</p> : null}
+        {detail ? (
+          <p className="mt-1 text-sm text-slate-500">{detail}</p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -85,7 +96,9 @@ export default function DashboardPage() {
       } catch (error) {
         if (mounted) {
           setMessage(
-            error instanceof Error ? error.message : "Could not load cloud data.",
+            error instanceof Error
+              ? error.message
+              : "Could not load cloud data.",
           );
         }
       }
@@ -227,7 +240,10 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
       <header className="mb-6 flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <Badge variant="outline" className="mb-4 rounded-md bg-blue-50 text-blue-800">
+          <Badge
+            variant="outline"
+            className="mb-4 rounded-md bg-blue-50 text-blue-800"
+          >
             Blueprint Statistics
           </Badge>
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 lg:text-5xl">
@@ -253,15 +269,27 @@ export default function DashboardPage() {
       </nav>
 
       <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <MetricCard label="Total Registrations" value={formatInt(totals.registrations)} />
-        <MetricCard label="Total Attendees" value={formatInt(totals.attendees)} />
+        <MetricCard
+          label="Total Registrations"
+          value={formatInt(totals.registrations)}
+        />
+        <MetricCard
+          label="Total Attendees"
+          value={formatInt(totals.attendees)}
+        />
         <MetricCard
           label="Upcoming Registrations"
           value={formatInt(totals.upcomingRegistrations)}
         />
-        <MetricCard label="Attendee Rate" value={`${totals.attendeeRate.toFixed(1)}%`} />
+        <MetricCard
+          label="Attendee Rate"
+          value={`${totals.attendeeRate.toFixed(1)}%`}
+        />
         <MetricCard label="Tracked Events" value={formatInt(events.length)} />
-        <MetricCard label="Next Event" value={nextEvent ? nextEvent.name : "-"} />
+        <MetricCard
+          label="Next Event"
+          value={nextEvent ? nextEvent.name : "-"}
+        />
       </section>
 
       <section className="mb-5 grid gap-4 lg:grid-cols-3">
@@ -277,7 +305,9 @@ export default function DashboardPage() {
             <div className="mt-4 h-2 rounded-full bg-slate-100">
               <div
                 className="h-2 rounded-full bg-gradient-to-r from-emerald-600 to-blue-700"
-                style={{ width: `${Math.min(Math.max(totals.attendeeRate, 0), 100)}%` }}
+                style={{
+                  width: `${Math.min(Math.max(totals.attendeeRate, 0), 100)}%`,
+                }}
               />
             </div>
           </CardContent>
@@ -340,7 +370,10 @@ export default function DashboardPage() {
           <option value="completed">Completed</option>
           <option value="upcoming">Upcoming</option>
         </Select>
-        <Select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+        <Select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortMode)}
+        >
           <option value="date-asc">Date oldest first</option>
           <option value="date-desc">Date newest first</option>
           <option value="registrations-desc">Registrations high to low</option>
@@ -357,16 +390,25 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Top Events by Registrations</CardTitle>
-            <CardDescription>Showing {formatInt(filtered.length)} filtered events</CardDescription>
+            <CardDescription>
+              Showing {formatInt(filtered.length)} filtered events
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {topEvents.list.map((event) => (
-              <div className="grid grid-cols-[minmax(0,1fr)_2fr_64px] items-center gap-3" key={event.id}>
-                <span className="truncate text-sm font-medium text-slate-700">{event.name}</span>
+              <div
+                className="grid grid-cols-[minmax(0,1fr)_2fr_64px] items-center gap-3"
+                key={event.id}
+              >
+                <span className="truncate text-sm font-medium text-slate-700">
+                  {event.name}
+                </span>
                 <div className="h-2 rounded-full bg-slate-100">
                   <div
                     className="h-2 rounded-full bg-blue-700"
-                    style={{ width: `${(event.registrations / topEvents.max) * 100}%` }}
+                    style={{
+                      width: `${(event.registrations / topEvents.max) * 100}%`,
+                    }}
                   />
                 </div>
                 <span className="text-right text-xs font-semibold text-slate-500">
@@ -387,8 +429,13 @@ export default function DashboardPage() {
                 className="grid min-h-14 grid-cols-[minmax(0,1fr)_64px_minmax(180px,1fr)] items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
                 key={event.id}
               >
-                <strong className="truncate text-sm text-slate-900">{event.name}</strong>
-                <Badge variant="outline" className="justify-center bg-blue-50 font-mono text-blue-800">
+                <strong className="truncate text-sm text-slate-900">
+                  {event.name}
+                </strong>
+                <Badge
+                  variant="outline"
+                  className="justify-center bg-blue-50 font-mono text-blue-800"
+                >
                   {formatInt(event.registrations)}
                 </Badge>
                 <span className="truncate text-right text-sm text-slate-500">
@@ -408,12 +455,19 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {groupBars.list.map((entry) => (
-              <div className="grid grid-cols-[minmax(0,1fr)_2fr_64px] items-center gap-3" key={entry.group}>
-                <span className="truncate text-sm font-medium text-slate-700">{entry.group}</span>
+              <div
+                className="grid grid-cols-[minmax(0,1fr)_2fr_64px] items-center gap-3"
+                key={entry.group}
+              >
+                <span className="truncate text-sm font-medium text-slate-700">
+                  {entry.group}
+                </span>
                 <div className="h-2 rounded-full bg-slate-100">
                   <div
                     className="h-2 rounded-full bg-emerald-600"
-                    style={{ width: `${(entry.registrations / groupBars.max) * 100}%` }}
+                    style={{
+                      width: `${(entry.registrations / groupBars.max) * 100}%`,
+                    }}
                   />
                 </div>
                 <span className="text-right text-xs font-semibold text-slate-500">
@@ -431,17 +485,28 @@ export default function DashboardPage() {
           <CardContent className="space-y-3">
             {monthly.list.map((entry) => {
               const [year, month] = entry.month.split("-");
-              const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("en-AU", {
+              const label = new Date(
+                Number(year),
+                Number(month) - 1,
+                1,
+              ).toLocaleDateString("en-AU", {
                 month: "short",
                 year: "numeric",
               });
               return (
-                <div className="grid grid-cols-[96px_2fr_64px] items-center gap-3" key={entry.month}>
-                  <span className="text-sm font-medium text-slate-700">{label}</span>
+                <div
+                  className="grid grid-cols-[96px_2fr_64px] items-center gap-3"
+                  key={entry.month}
+                >
+                  <span className="text-sm font-medium text-slate-700">
+                    {label}
+                  </span>
                   <div className="h-2 rounded-full bg-slate-100">
                     <div
                       className="h-2 rounded-full bg-blue-700"
-                      style={{ width: `${(entry.registrations / monthly.max) * 100}%` }}
+                      style={{
+                        width: `${(entry.registrations / monthly.max) * 100}%`,
+                      }}
                     />
                   </div>
                   <span className="text-right text-xs font-semibold text-slate-500">
@@ -459,7 +524,9 @@ export default function DashboardPage() {
           <div>
             <CardTitle>Event Details</CardTitle>
             <CardDescription>
-              {ordered.length ? `${ordered.length} of ${events.length} events shown.` : "No matching events."}
+              {ordered.length
+                ? `${ordered.length} of ${events.length} events shown.`
+                : "No matching events."}
             </CardDescription>
           </div>
           <Badge variant="secondary">
@@ -482,11 +549,17 @@ export default function DashboardPage() {
             <TableBody>
               {ordered.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell className="font-medium text-slate-950">{event.name}</TableCell>
+                  <TableCell className="font-medium text-slate-950">
+                    {event.name}
+                  </TableCell>
                   <TableCell>{formatDate(event.date)}</TableCell>
                   <TableCell>{event.group}</TableCell>
                   <TableCell>
-                    <Badge variant={event.status === "completed" ? "success" : "secondary"}>
+                    <Badge
+                      variant={
+                        event.status === "completed" ? "success" : "secondary"
+                      }
+                    >
                       {event.status}
                     </Badge>
                   </TableCell>
